@@ -1,0 +1,41 @@
+<h2>My Listings</h2>
+
+<ul class="my-listings">
+  <li *ngFor="let listing of myListings" class="my-listing-item">
+    <strong class="my-listing-title">{{ listing.title }}</strong> ${{ listing.price }}
+    <p class="my-listing-description">{{ listing.category }}</p>
+    <p class="my-listing-description">{{ listing.description }}</p>
+    <small class="my-listing-details">Uploaded on: {{ listing.uploadDate }}</small>
+    
+    <div class="my-listing-actions">
+      <button class="edit-btn" (click)="editListing(listing)">Edit</button>
+      <button class="delete-btn" (click)="deleteListing(listing.id)">Delete</button>
+    </div>
+  </li>
+</ul>
+
+<p *ngIf="myListings.length === 0">You have no listings.</p>
+
+<!-- Edit Form (only visible when isEditing is true) -->
+<div *ngIf="isEditing" class="edit-form">
+  <h3>Edit Listing</h3>
+  <form (ngSubmit)="submitEdit()">
+    <label>Title:</label>
+    <input type="text" [(ngModel)]="editingListing!.title" name="title" required />
+
+    <label>Category:</label>
+    <input type="text" [(ngModel)]="editingListing!.category" name="category" required />
+
+    <label>Price:</label>
+    <input type="number" [(ngModel)]="editingListing!.price" name="price" required />
+
+    <label>Description:</label>
+    <textarea [(ngModel)]="editingListing!.description" name="description"></textarea>
+
+    <label>Location:</label>
+    <input type="text" [(ngModel)]="editingListing!.location" name="location" />
+
+    <button type="submit">Save</button>
+    <button type="button" (click)="cancelEdit()">Cancel</button>
+  </form>
+</div>

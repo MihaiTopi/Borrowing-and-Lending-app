@@ -1,0 +1,24 @@
+<h2>Create Listing</h2>
+<form class="create-listing-form" (ngSubmit)="saveListing()">
+  <label for="title">Title</label>
+  <input type="text" id="title" [(ngModel)]="newListing.title" name="title" required />
+
+  <label for="category">Category</label>
+  <select id="category" [(ngModel)]="newListing.category" name="category">
+    <option *ngFor="let category of categories" [value]="category">{{ category }}</option>
+  </select>
+
+  <label for="price">Price ($)</label>
+  <input type="number" id="price" [(ngModel)]="newListing.price" name="price" required />
+
+  <label for="description">Description</label>
+  <textarea id="description" [(ngModel)]="newListing.description" name="description" required></textarea>
+
+  <label for="location">Location</label>
+  <select id="location" [(ngModel)]="newListing.location" name="location" required>
+    <option value="">Select a County</option>
+    <option *ngFor="let county of counties" [value]="county">{{ county }}</option>
+  </select>
+
+  <button type="submit">Save Listing</button>
+</form>

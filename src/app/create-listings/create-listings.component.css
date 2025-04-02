@@ -1,0 +1,156 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    padding: 0;
+    background-color: #f8f9fa;
+  }
+  
+  h2 {
+    color: #333;
+    text-align: center;
+  }
+  
+  /* Filter and Sort Section */
+  .filters {
+    margin-bottom: 15px;
+    text-align: center;
+  }
+  
+  .filters label {
+    font-weight: bold;
+    margin-right: 5px;
+  }
+  /* 
+  .filters select, .filters button {
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }*/
+  /*
+  .filters button {
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+  }*/
+  /*
+  .filters button:hover {
+    background-color: #0056b3;
+  }*/
+  
+  /* Listings Section */
+  .listings, .my-listings {
+    list-style: none;
+    padding: 0;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  .listing-item, .my-listing-item {
+    background: white;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 5px;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  .listing-title, .my-listing-title {
+    font-size: 16px;
+    color: #333;
+  }
+  
+  .listing-description, .my-listing-description {
+    margin: 5px 0;
+    color: #555;
+  }
+  
+  .listing-details, .my-listing-details {
+    display: block;
+    color: #777;
+  }
+  
+  .my-listing-actions {
+    margin-top: 10px;
+  }
+  
+  .my-listing-actions button {
+    padding: 8px 10px;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 5px;
+  }
+  
+  .my-listing-actions .edit-btn {
+    background-color: #ffc107;
+    color: black;
+  }
+  
+  .my-listing-actions .edit-btn:hover {
+    background-color: #e0a800;
+  }
+  
+  .my-listing-actions .delete-btn {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .my-listing-actions .delete-btn:hover {
+    background-color: #c82333;
+  }
+  
+  /* Create Listing Form */
+  .create-listing-form {
+    max-width: 500px;
+    margin: 20px auto;
+    background: white;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column; 
+  }
+  
+  .create-listing-form label {
+    display: block;
+    font-weight: bold;
+    margin-top: 10px;
+  }
+  
+  .create-listing-form input,
+  .create-listing-form select,
+  .create-listing-form textarea {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    padding: 10px 0px 10px 0px; 
+  }
+  
+  .create-listing-form textarea {
+    resize: vertical;
+    height: 80px;
+  }
+  
+  .create-listing-form button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-top: 15px;
+    margin-left: 0px; /* why does it fuckign have some sort of margin-left applied by default and I have to set it to 0px */
+    background-color: #28a745;
+    color: white;
+    font-size: 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    
+  }
+  
+  .create-listing-form button:hover {
+    background-color: #218838;
+  }
+  

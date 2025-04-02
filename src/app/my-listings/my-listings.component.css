@@ -1,0 +1,135 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    padding: 0;
+    background-color: #f8f9fa;
+}
+
+h2 {
+    color: #333;
+    text-align: center;
+}
+
+/* Listings Section */
+.listings, .my-listings {
+    list-style: none;
+    padding: 0;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.listing-item, .my-listing-item {
+    background: white;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 5px;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.listing-title, .my-listing-title {
+    font-size: 16px;
+    color: #333;
+}
+
+.listing-description, .my-listing-description {
+    margin: 5px 0;
+    color: #555;
+}
+
+.listing-details, .my-listing-details {
+    display: block;
+    color: #777;
+}
+
+.my-listing-actions {
+    margin-top: 10px;
+}
+
+.my-listing-actions button {
+    padding: 8px 10px;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 5px;
+}
+
+.my-listing-actions .edit-btn {
+    background-color: #ffc107;
+    color: black;
+}
+
+.my-listing-actions .edit-btn:hover {
+    background-color: #e0a800;
+}
+
+.my-listing-actions .delete-btn {
+    background-color: #dc3545;
+    color: white;
+}
+
+.my-listing-actions .delete-btn:hover {
+    background-color: #c82333;
+}
+
+/* Edit Listing Form - Styled Like Create Listing Form */
+.edit-form {
+    max-width: 400px;
+    background: white;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+    
+    position: absolute;
+    right: 20px; /* Position it to the right */
+    top: 50px;  /* Adjust vertical positioning */
+}
+
+.edit-form label {
+    display: block;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+.edit-form input,
+.edit-form select,
+.edit-form textarea {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.edit-form textarea {
+    resize: vertical;
+    height: 80px;
+}
+
+.edit-form button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-top: 15px;
+    background-color: #28a745;
+    color: white;
+    font-size: 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.edit-form button:hover {
+    background-color: #218838;
+}
+
+/* Cancel Button */
+.edit-form .cancel-btn {
+    background-color: #dc3545;
+    margin-top: 10px;
+}
+
+.edit-form .cancel-btn:hover {
+    background-color: #c82333;
+}

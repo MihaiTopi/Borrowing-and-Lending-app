@@ -1,0 +1,55 @@
+<h2>All Listings</h2>
+
+<!-- Filter and Sort Section -->
+<div class="filters">
+  <label for="category">Category:</label>
+  <select id="category" [(ngModel)]="selectedCategory" (change)="filterByCategory()">
+    <option value="">All Categories</option>
+    <option *ngFor="let category of categories" [value]="category">{{ category }}</option>
+  </select>
+
+  <label for="sortBy">Sort by:</label>
+  <select id="sortBy" [(ngModel)]="sortBy" (change)="sortListings()">
+    <option value="price">Price</option>
+    <option value="uploadDate">Upload Date</option>
+  </select>
+
+  <button (click)="toggleSortOrder()">Sort {{ sortOrder === 'asc' ? 'Descending' : 'Ascending' }}</button>
+
+  <label for="itemsPerPage">Listings per page:</label>
+  <select id="itemsPerPage" [(ngModel)]="itemsPerPage" (change)="changeItemsPerPage(itemsPerPage)">
+    <option [value]="5">5</option>
+    <option [value]="10">10</option>
+  </select>
+</div>
+
+<!-- Listings Section -->
+<ul class="listings">
+  <li *ngFor="let listing of paginatedListings" class="listing-item" [ngClass]="getBorderColor(listing.uploadDate)">
+    <strong class="listing-title">{{ listing.title }}</strong> ({{ listing.category }}) - ${{ listing.price }}
+    <p class="listing-description">{{ listing.description }}</p>
+    <small class="listing-details">Uploaded on: {{ listing.uploadDate }} | Location: {{ listing.location }} | Owner: {{ listing.owner }}</small>
+  </li>
+  
+</ul>
+
+<p *ngIf="filteredListings.length === 0">No listings available.</p>
+
+<!-- Pagination Controls -->
+<div class="pagination">
+  <button (click)="prevPage()" [disabled]="currentPage === 1">Previous</button>
+  <span>Page {{ currentPage }} of {{ totalPages }}</span>
+  <button (click)="nextPage()" [disabled]="currentPage === totalPages">Next</button>
+</div>
+
+<div class="charts">
+  <canvas id="priceChart"></canvas>
+  <canvas id="categoryChart"></canvas>
+  <canvas id="monthlyChart"></canvas>
+</div>
+
+<button class="add-listing-btn" (click)="startAddingListings()">
+  {{ addingInterval ? 'Stop Adding' : 'Start Adding' }}
+</button>
+
+
