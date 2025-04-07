@@ -1,7 +1,27 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
+const os = require("os"); // in order to get the ip address of server
 const PORT = 3000;
+
+// Logic for when hosting on local network
+const getLocalIP = () =>
+  Object.values(os.networkInterfaces())
+    .flat()
+    .find((i) => i.family === "IPv4" && !i.internal)?.address || "localhost";
+
+const LOCAL_IP = getLocalIP();
+
+app.listen(PORT, LOCAL_IP, () => {
+  console.log(`Server running at http://${LOCAL_IP}:${PORT}`);
+});
+
+/* Logic for when hosting on locally
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+} */
 
 app.use(cors());
 app.use(express.json());
@@ -108,12 +128,12 @@ app.post('/api/listings/reset', (req, res) => {
 
 /* istanbul ignore next */
 
-// 👇 Only start the server if this file is run directly
+/* 👇 Only start the server if this file is run directly
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
-}
+}*/
 
 // 👇 Export app for testing
 module.exports = app;

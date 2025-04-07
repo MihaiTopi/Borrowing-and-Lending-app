@@ -182,27 +182,26 @@ export class ListingsPageComponent implements OnInit {
   /* filtering area */
 
   filterByCategory() {
-    if (this.selectedCategory) {
-      this.filteredListings = this.listings.filter(listing => listing.category === this.selectedCategory);
-    } else {
-      this.filteredListings = [...this.listings];
-    }
-    this.sortListings();
+    this.filteredListings = this.listingService.filterListings(
+      this.listings,
+      this.selectedCategory,
+      this.sortBy,
+      this.sortOrder
+    );
     this.updatePagination();
   }
+  
 
   sortListings() {
-    this.filteredListings.sort((a, b) => {
-      if (this.sortBy === 'price') {
-        return this.sortOrder === 'asc' ? a.price - b.price : b.price - a.price;
-      } else {
-        const dateA = new Date(a.uploadDate).getTime();
-        const dateB = new Date(b.uploadDate).getTime();
-        return this.sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
-      }
-    });
+    this.filteredListings = this.listingService.filterListings(
+      this.listings,
+      this.selectedCategory,
+      this.sortBy,
+      this.sortOrder
+    );
     this.updatePagination();
   }
+  
 
   toggleSortOrder() {
     this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
@@ -243,22 +242,7 @@ export class ListingsPageComponent implements OnInit {
     this.updatePagination();
   }
 
-
-  newListings: Listing[] = [ //there are the test listings
-    { id: uuidv4(), title: 'Electric Scooter', category: 'Vehicles', price: 25, description: 'Fast and efficient electric scooter.', owner: 'user6', uploadDate: '2025-03-25', location: 'Ilfov' },
-    { id: uuidv4(), title: 'Camping Tent', category: 'Home', price: 10, description: 'Spacious tent for outdoor adventures.', owner: 'user7', uploadDate: '2025-03-26', location: 'Brasov' },
-    { id: uuidv4(), title: 'VR Headset', category: 'Technology', price: 30, description: 'High-end virtual reality headset.', owner: 'user8', uploadDate: '2025-03-27', location: 'Sibiu' },
-    { id: uuidv4(), title: 'Lawn Mower', category: 'Garden', price: 15, description: 'Electric lawn mower available for short-term rental.', owner: 'user1', uploadDate: '2024-12-25', location: 'Cluj' },
-    { id: uuidv4(), title: 'Physics Textbook', category: 'Education', price: 5, description: 'University-level physics textbook in great condition.', owner: 'me', uploadDate: '2025-02-28', location: 'Dolj' },
-    { id: uuidv4(), title: 'Gaming Laptop', category: 'Computers', price: 50, description: 'High-performance gaming laptop available for rent.', owner: 'user3', uploadDate: '2025-03-15', location: 'Cluj' },
-    { id: uuidv4(), title: 'Car Jack', category: 'Vehicles', price: 10, description: 'Hydraulic car jack, great for repairs.', owner: 'user4', uploadDate: '2024-12-10', location: 'Prahova' },
-    { id: uuidv4(), title: 'Smartphone Gimbal', category: 'Technology', price: 20, description: 'Stabilizer for smooth video recording.', owner: 'user5', uploadDate: '2025-03-05', location: 'Tulcea' },
-    { id: uuidv4(), title: 'Lawn Mower', category: 'Garden', price: 15, description: 'Electric lawn mower available for short-term rental.', owner: 'user1', uploadDate: '2025-03-20', location: 'Cluj' },
-    { id: uuidv4(), title: 'Physics Textbook', category: 'Education', price: 5, description: 'University-level physics textbook in great condition.', owner: 'me', uploadDate: '2024-02-28', location: 'Dolj' },
-    { id: uuidv4(), title: 'Gaming Laptop', category: 'Computers', price: 50, description: 'High-performance gaming laptop available for rent.', owner: 'user3', uploadDate: '2024-11-15', location: 'Cluj' },
-    { id: uuidv4(), title: 'Car Jack', category: 'Vehicles', price: 10, description: 'Hydraulic car jack, great for repairs.', owner: 'user4', uploadDate: '2024-08-10', location: 'Prahova' },
-    { id: uuidv4(), title: 'Smartphone Gimbal', category: 'Technology', price: 20, description: 'Stabilizer for smooth video recording.', owner: 'user5', uploadDate: '2024-09-15', location: 'Tulcea' }
-  ];
+// Adding listings asynchronously
 
   addingInterval: any = null;
   currentIndex: number = 0;
@@ -270,27 +254,26 @@ export class ListingsPageComponent implements OnInit {
       return;
     }
   
-    this.addingInterval = setInterval(() => {
-      if (this.currentIndex < this.newListings.length) {
-        // Make an HTTP POST request to your backend to add the listing
-        this.listingService.addListing(this.newListings[this.currentIndex]).subscribe((createdListing) => {
-          // No need to store in localStorage, just update the listings array
-          this.listings.push(createdListing);
-          
-          // Filter, paginate, and update the charts
-          this.filteredListings = [...this.listings];
-          this.updatePagination();
-          this.generateCharts();
+    const newListings = this.listingService.getNewListings();
   
-          this.currentIndex++;
-        });
-      } else {
-        clearInterval(this.addingInterval);
+    this.addingInterval = this.listingService.startAsyncAdding(
+      newListings,
+      (createdListing: Listing) => {
+        this.listings.push(createdListing);
+        this.filteredListings = this.listingService.filterListings(
+          this.listings,
+          this.selectedCategory,
+          this.sortBy,
+          this.sortOrder
+        );
+        this.updatePagination();
+        this.generateCharts();
+      },
+      () => {
         this.addingInterval = null;
       }
-    }, 1000);
+    );
   }
-  
 
 }
 
