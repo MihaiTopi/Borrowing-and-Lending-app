@@ -3,6 +3,7 @@ const cors = require("cors");
 const app = express();
 const os = require("os"); // in order to get the ip address of server
 const PORT = 3000;
+const uuid = require('uuid');
 
 // Logic for when hosting on local network
 const getLocalIP = () =>
@@ -33,35 +34,35 @@ const allowedCategories = ['Home', 'Garden', 'Education', 'Vehicles', 'Technolog
 
 listings = [
   {
-    id: idCounter++,
-    title: 'Bicycle',
-    category: 'Sports',
+    id: uuid.v4(),
+    title: 'Electric Scooter',
+    category: 'Vehicles',
     price: 25,
-    description: 'Mountain bike, good condition.',
-    owner: 'John Doe',
-    uploadDate: '2025-04-01',
-    location: 'New York'
+    description: 'Fast and efficient electric scooter.',
+    owner: 'user6',
+    uploadDate: '2025-03-25',
+    location: 'Ilfov'
   },
   {
-    id: idCounter++,
-    title: 'Projector',
-    category: 'Electronics',
+    id: uuid.v4(),
+    title: 'Camping Tent',
+    category: 'Home',
+    price: 10,
+    description: 'Spacious tent for outdoor adventures.',
+    owner: 'user7',
+    uploadDate: '2025-03-26',
+    location: 'Brasov'
+  },
+  {
+    id: uuid.v4(),
+    title: 'VR Headset',
+    category: 'Technology',
     price: 30,
-    description: '1080p projector, suitable for presentations.',
-    owner: 'Jane Smith',
-    uploadDate: '2025-04-03',
-    location: 'San Francisco'
+    description: 'High-end virtual reality headset.',
+    owner: 'user8',
+    uploadDate: '2025-03-27',
+    location: 'Sibiu'
   },
-  {
-    id: idCounter++,
-    title: 'Tent',
-    category: 'Outdoors',
-    price: 15,
-    description: '2-person tent, waterproof.',
-    owner: 'Alice Johnson',
-    uploadDate: '2025-04-05',
-    location: 'Seattle'
-  }
 ];
 
 function validateListing(data) {
@@ -77,8 +78,16 @@ function validateListing(data) {
 
 // Routes
 app.get('/api/listings', (req, res) => {
-  res.json(listings);
+  const { page = 1, limit = 5 } = req.query; 
+
+  const startIndex = (page - 1) * limit;  
+  const endIndex = page * limit;  
+
+  const paginatedListings = listings.slice(startIndex, endIndex);  
+
+  res.json(paginatedListings);  
 });
+
 
 app.post('/api/listings', async (req, res) => {
   const { title, category, price, description, owner, uploadDate, location } = req.body;
@@ -91,7 +100,7 @@ app.post('/api/listings', async (req, res) => {
   if (error) return res.status(400).json({ error });
 
   const newListing = {
-    id: idCounter++,
+    id: uuid.v4(),
     ...req.body
   };
 
@@ -99,31 +108,39 @@ app.post('/api/listings', async (req, res) => {
   res.status(201).json(newListing);
 });
 
-app.put('/api/listings/:id', async (req, res) => {
+app.put('/api/listings/:id', (req, res) => {
   const listingId = req.params.id;
-  const listing = listings.find(l => l.id === parseInt(listingId));
-
-  if (!listing) {
-    return res.status(404).json({ message: 'Listing not found' });
+  const listingIndex = listings.findIndex(listing => listing.id === listingId);
+  if (listingIndex === -1) {
+    return res.status(404).send({ message: 'Listing not found' });
   }
-
-  const error = validateListing(req.body);
-  if (error) return res.status(400).json({ error });
-
-  Object.assign(listing, req.body);
-  res.json(listing);
+  // Handle partial update
+  const updatedListing = { ...listings[listingIndex], ...req.body };
+  listings[listingIndex] = updatedListing;
+  res.status(200).json(updatedListing);
 });
+
 
 app.delete('/api/listings/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  listings = listings.filter(listing => listing.id !== id);
-  res.status(204).end();
+  const listingId = req.params.id;
+  const listingIndex = listings.findIndex(listing => listing.id === listingId);
+  if (listingIndex === -1) {
+    return res.status(404).send({ message: 'Listing not found' });
+  }
+  listings.splice(listingIndex, 1);
+  res.status(204).send(); // Successfully deleted
 });
+
 
 app.post('/api/listings/reset', (req, res) => {
   listings = [];
   idCounter = 1;
   res.status(200).send('Reset complete');
+});
+
+// Add this to your server.js file
+app.get('/api/listings/ping', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 /* istanbul ignore next */
@@ -137,3 +154,12 @@ if (require.main === module) {
 
 // 👇 Export app for testing
 module.exports = app;
+
+/*
+
+Invoke-WebRequest -Uri "http://26.183.81.226:3000/api/listings/4" -Method DELETE
+Invoke-WebRequest -Uri "http://26.183.81.226:3000/api/listings" -Method POST -Headers @{"Content-Type"="application/json"} -Body '{"title": "Mountain Bike", "category": "Vehicles", "price": 50}'
+Invoke-WebRequest -Uri "http://26.183.81.226:3000/api/listings/4" -Method PUT -Headers @{"Content-Type"="application/json"} -Body '{"title": "Mountain Bikeee", "category": "Vehicles", "price": 30}'
+Invoke-WebRequest -Uri "http://26.183.81.226:3000/api/listings" -Method GET
+
+*/

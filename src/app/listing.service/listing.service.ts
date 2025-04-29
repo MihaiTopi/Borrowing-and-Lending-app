@@ -1,71 +1,260 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, of, catchError } from 'rxjs';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, of, catchError, BehaviorSubject } from 'rxjs';
 import { Listing } from '../models/listing.model';
 import { v4 as uuidv4 } from 'uuid';
+
+interface QueueItem {
+  type: 'add' | 'update' | 'delete';
+  data: Listing | string; // Listing for add/update, string (id) for delete
+  timestamp: number;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class ListingService {
-  private apiUrl = 'http://26.183.81.226:3000';
-  //private apiUrl = 'http://localhost:3000/listings';
-
-  private mockListings: Listing[] = [
-    { id: uuidv4(), title: 'Electric Scooter', category: 'Vehicles', price: 25, description: 'Fast and efficient electric scooter.', owner: 'user6', uploadDate: '2025-03-25', location: 'Ilfov' },
-    { id: uuidv4(), title: 'Camping Tent', category: 'Home', price: 10, description: 'Spacious tent for outdoor adventures.', owner: 'user7', uploadDate: '2025-03-26', location: 'Brasov' },
-    { id: uuidv4(), title: 'VR Headset', category: 'Technology', price: 30, description: 'High-end virtual reality headset.', owner: 'user8', uploadDate: '2025-03-27', location: 'Sibiu' },
-  ];
-
-  constructor(private http: HttpClient) {}
-
+  private apiUrl = 'http://192.168.64.129:3000/api/listings';
+  
+  // Track network and server status internally
+  private isOfflineSubject = new BehaviorSubject<boolean>(false);
+  private isServerDownSubject = new BehaviorSubject<boolean>(false);
+  private syncInProgressSubject = new BehaviorSubject<boolean>(false);
+  
+  private offlineQueue: QueueItem[] = [];
+  private readonly QUEUE_STORAGE_KEY = 'offline_listings_queue';
+  
+  constructor(private http: HttpClient) {
+    // Load queue from localStorage on service initialization
+    this.loadQueueFromStorage();
+    
+    this.checkServerAndSync();
+  }
+  
+  // Check server and sync if possible
+  private checkServerAndSync() {
+    if (this.isOfflineSubject.value) return;
+    
+    // Simple ping to check server status
+    this.http.get<any>(`${this.apiUrl}/ping`).pipe(
+      catchError((error: HttpErrorResponse) => {
+        this.isServerDownSubject.next(true);
+        return of(null);
+      })
+    ).subscribe(result => {
+      if (result) {
+        this.isServerDownSubject.next(false);
+        this.syncOfflineChanges().subscribe();
+      }
+    });
+  }
+  
+  // CRUD operations with offline support
   getListings(): Observable<Listing[]> {
-    return this.http.get<Listing[]>(this.apiUrl).pipe(
-      catchError(() => {
-        return of(this.mockListings);
-      })
-    );
-  }
-
-  addListing(listing: Listing): Observable<Listing> {
-    // if no ID provided, generate one
-    if (!listing.id) {
-      listing.id = uuidv4();
+    if (this.isOfflineSubject.value || this.isServerDownSubject.value) {
+      // If offline or server down, return cached listings
+      const cachedData = localStorage.getItem('cached_listings');
+      if (cachedData) {
+        return of(JSON.parse(cachedData));
+      }
+      return of([]); // Empty array if no cache
     }
-
-    return this.http.post<Listing>(this.apiUrl, listing).pipe(
-      catchError(() => {
-        this.mockListings.push(listing);
-        return of(listing);
-      })
-    );
-  }
-
-  updateListing(listing: Listing): Observable<Listing> {
-    return this.http.put<Listing>(`${this.apiUrl}/${listing.id}`, listing).pipe(
-      catchError(() => {
-        const index = this.mockListings.findIndex(l => l.id === listing.id);
-        if (index !== -1) {
-          this.mockListings[index] = listing;
+    
+    return this.http.get<Listing[]>(this.apiUrl).pipe(
+      catchError((error: HttpErrorResponse) => {
+        
+        // Return cached data if available
+        const cachedData = localStorage.getItem('cached_listings');
+        if (cachedData) {
+          return of(JSON.parse(cachedData));
         }
+        return of([]);
+      })
+    );
+  }
+  
+  addListing(listing: Listing): Observable<Listing> {
+    if (!listing.id) listing.id = uuidv4();
+    
+    // If offline or server down, queue for later
+    if (this.isOfflineSubject.value || this.isServerDownSubject.value) {
+      this.addToQueue({ type: 'add', data: listing });
+      this.updateLocalCache(listing, 'add');
+      return of(listing);
+    }
+    
+    return this.http.post<Listing>(this.apiUrl, listing).pipe(
+      catchError((error: HttpErrorResponse) => {
+
+        // Queue for later
+        this.addToQueue({ type: 'add', data: listing });
+        this.updateLocalCache(listing, 'add');
+        
+        console.warn('Operation queued for later', listing);
+        return of(listing); // Return optimistic result
+      })
+    );
+  }
+  
+  updateListing(listing: Listing): Observable<Listing> {
+    if (this.isOfflineSubject.value || this.isServerDownSubject.value) {
+      this.addToQueue({ type: 'update', data: listing });
+      this.updateLocalCache(listing, 'update');
+      return of(listing);
+    }
+    
+    return this.http.put<Listing>(`${this.apiUrl}/${listing.id}`, listing).pipe(
+      catchError((error: HttpErrorResponse) => {
+        
+        this.addToQueue({ type: 'update', data: listing });
+        this.updateLocalCache(listing, 'update');
+        
+        console.warn('Update queued for later', listing);
         return of(listing);
       })
     );
   }
-
+  
   deleteListing(id: string): Observable<void> {
+    if (this.isOfflineSubject.value || this.isServerDownSubject.value) {
+      this.addToQueue({ type: 'delete', data: id });
+      this.updateLocalCache(id, 'delete');
+      return of(undefined);
+    }
+    
     return this.http.delete<void>(`${this.apiUrl}/${id}`).pipe(
-      catchError(() => {
-        this.mockListings = this.mockListings.filter(listing => listing.id !== id);
+      catchError((error: HttpErrorResponse) => {
+        
+        this.addToQueue({ type: 'delete', data: id });
+        this.updateLocalCache(id, 'delete');
+        
+        console.warn('Delete queued for later', id);
         return of(undefined);
       })
     );
   }
+  
+  // Queue management
+  private addToQueue(item: Omit<QueueItem, 'timestamp'>) {
+    const queueItem: QueueItem = {
+      ...item,
+      timestamp: Date.now()
+    };
+    
+    this.offlineQueue.push(queueItem);
+    this.saveQueueToStorage();
+  }
+  
+  private saveQueueToStorage() {
+    if (typeof window !== 'undefined' && localStorage) {
+      localStorage.setItem(this.QUEUE_STORAGE_KEY, JSON.stringify(this.offlineQueue));
+    }
+  }  
+  
+  private loadQueueFromStorage() {
+    if (typeof window !== 'undefined' && localStorage) {
+      const storedQueue = localStorage.getItem(this.QUEUE_STORAGE_KEY);
+      if (storedQueue) {
+        this.offlineQueue = JSON.parse(storedQueue);
+      }
+    }
+  }  
+  
+  // Local cache management
+  private updateLocalCache(item: Listing | string, operation: 'add' | 'update' | 'delete') {
+    if (typeof window === 'undefined' || !localStorage) return;
+  
+    const cachedData = localStorage.getItem('cached_listings');
+    let listings: Listing[] = cachedData ? JSON.parse(cachedData) : [];
+  
+    if (operation === 'add' && typeof item !== 'string') {
+      listings.push(item);
+    } else if (operation === 'update' && typeof item !== 'string') {
+      const index = listings.findIndex(l => l.id === item.id);
+      if (index !== -1) {
+        listings[index] = item;
+      }
+    } else if (operation === 'delete' && typeof item === 'string') {
+      listings = listings.filter(l => l.id !== item);
+    }
+  
+    localStorage.setItem('cached_listings', JSON.stringify(listings));
+  }
+  
+  
+  // Synchronization logic
+  syncOfflineChanges(): Observable<boolean> {
+    if (this.offlineQueue.length === 0) {
+      return of(true); // Nothing to sync
+    }
+    
+    if (this.isOfflineSubject.value || this.isServerDownSubject.value) {
+      return of(false); // Cannot sync now
+    }
+    
+    this.syncInProgressSubject.next(true);
+    
+    return new Observable<boolean>(observer => {
+      const processQueue = async () => {
+        const queue = [...this.offlineQueue];
+        let success = true;
+        
+        for (const item of queue) {
+          try {
+            if (item.type === 'add' && typeof item.data !== 'string') {
+              await this.http.post<Listing>(this.apiUrl, item.data).toPromise();
+            } else if (item.type === 'update' && typeof item.data !== 'string') {
+              await this.http.put<Listing>(`${this.apiUrl}/${item.data.id}`, item.data).toPromise();
+            } else if (item.type === 'delete' && typeof item.data === 'string') {
+              await this.http.delete<void>(`${this.apiUrl}/${item.data}`).toPromise();
+            }
+            
+            // Remove processed item from queue
+            const index = this.offlineQueue.findIndex(
+              qi => qi.timestamp === item.timestamp && qi.type === item.type
+            );
+            if (index !== -1) {
+              this.offlineQueue.splice(index, 1);
+              this.saveQueueToStorage();
+            }
+          } catch (error) {
+            console.error('Failed to sync item', item, error);
+            success = false;
+            break;
+          }
+        }
+        
+        // After sync attempt, refresh cached listings if successful
+        if (success) {
+          try {
+            const freshListings = await this.http.get<Listing[]>(this.apiUrl).toPromise();
+            if (freshListings) {
+              localStorage.setItem('cached_listings', JSON.stringify(freshListings));
+            }
+          } catch (error) {
+            console.error('Failed to refresh cache after sync', error);
+          }
+        }
+        
+        this.syncInProgressSubject.next(false);
+        observer.next(success);
+        observer.complete();
+      };
+      
+      processQueue();
+      
+      return {
+        unsubscribe() {}
+      };
+    });
+  }
+  
+  // Get pending changes count
+  getPendingChangesCount(): number {
+    return this.offlineQueue.length;
+  }
 
-  /* filtering and sorting */
-
-  // listing.service.ts (inside ListingService)
-
+  // Your existing methods
   filterListings(
     listings: Listing[],
     selectedCategory: string,
@@ -91,8 +280,6 @@ export class ListingService {
     return result;
   }
 
-  // async adding logic
-
   private newListings: Listing[] = [
     { id: uuidv4(), title: 'Electric Scooter', category: 'Vehicles', price: 25, description: 'Fast and efficient electric scooter.', owner: 'user6', uploadDate: '2025-03-25', location: 'Ilfov' },
     { id: uuidv4(), title: 'Camping Tent', category: 'Home', price: 10, description: 'Spacious tent for outdoor adventures.', owner: 'user7', uploadDate: '2025-03-26', location: 'Brasov' },
@@ -110,6 +297,7 @@ export class ListingService {
   ];
 
   getNewListings(): Listing[] {
+    // Your existing implementation
     return [...this.newListings];
   }
 
@@ -134,5 +322,9 @@ export class ListingService {
     return interval;
   }
 
-  // Offline support
+  // listings page modification
+  getListingsPage(page: number, limit: number): Observable<any[]> {
+    return this.http.get<any[]>(`http://192.168.64.129:3000/api/listings?page=${page}&limit=${limit}`);
+  }
+
 }

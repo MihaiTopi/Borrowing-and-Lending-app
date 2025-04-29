@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ListingService } from '../listing.service/listing.service';
 import { Listing } from '../models/listing.model';
@@ -19,6 +19,8 @@ Chart.register(...registerables);
 })
 export class ListingsPageComponent implements OnInit {
   
+  infiniteScrollEnabled: boolean = false;
+
   listings: Listing[] = [];
   filteredListings: Listing[] = [];
   paginatedListings: Listing[] = [];
@@ -129,13 +131,39 @@ export class ListingsPageComponent implements OnInit {
     }, {});
   }
 
+
   fetchListings() {
-    this.listingService.getListings().subscribe((data) => {
-      this.listings = data;
-      this.filteredListings = [...this.listings];
-      this.updatePagination();
+    this.listingService.getListingsPage(this.currentPage, this.itemsPerPage).subscribe({
+      next: (data) => {
+        if (data && data.length > 0) {
+          // Append new listings
+          this.listings = [...this.listings, ...data]; 
+          this.applyFiltersAndSort();
+          this.updatePagination();
+          
+          setTimeout(() => {
+            this.generateCharts();
+          }, 1000);
+        } else {
+          console.warn('No listings received from server');
+        }
+      },
+      error: (err) => {
+        console.error('Error fetching listings:', err);
+      }
     });
   }
+  
+
+// Add this new method to apply filters and sorting
+applyFiltersAndSort() {
+  this.filteredListings = this.listingService.filterListings(
+    this.listings,
+    this.selectedCategory,
+    this.sortBy,
+    this.sortOrder
+  );
+}
 
   addListing(newListing: Listing) {
     this.listingService.addListing(newListing).subscribe((createdListing) => {
@@ -143,6 +171,12 @@ export class ListingsPageComponent implements OnInit {
       this.filteredListings = [...this.listings];
       this.updatePagination();
     });
+    this.fetchListings();
+    this.filteredListings = [...this.listings];
+    this.updatePagination();
+    setTimeout(() => {
+      this.generateCharts();
+    },1000);
   }
 
   deleteListing(id: string) {
@@ -154,9 +188,16 @@ export class ListingsPageComponent implements OnInit {
   }
 
   updatePagination() {
-    this.totalPages = Math.ceil(this.filteredListings.length / this.itemsPerPage);
-    this.currentPage = Math.min(this.currentPage, this.totalPages) || 1;
-    this.paginatedListings = this.filteredListings.slice((this.currentPage - 1) * this.itemsPerPage, this.currentPage * this.itemsPerPage);
+    if (!this.infiniteScrollEnabled) {
+      this.totalPages = Math.ceil(this.filteredListings.length / this.itemsPerPage);
+      this.currentPage = Math.min(this.currentPage, this.totalPages) || 1;
+      this.paginatedListings = this.filteredListings.slice((this.currentPage - 1) * this.itemsPerPage, this.currentPage * this.itemsPerPage);
+    }
+    else {
+      this.currentPage = 1;
+      this.totalPages = 1;
+      this.paginatedListings = this.filteredListings.slice(0, this.itemsPerPage);
+    }
   }
 
   getBorderColor(uploadDate: string): string {
@@ -237,8 +278,12 @@ export class ListingsPageComponent implements OnInit {
   }
 
   changeItemsPerPage(count: number) {
-    this.itemsPerPage = count;
-    this.currentPage = 1;
+    if (count < 1) this.infiniteScrollEnabled = true;
+    else {
+      this.infiniteScrollEnabled = false;
+      this.itemsPerPage = count;
+      this.currentPage = 1;
+    }
     this.updatePagination();
   }
 
@@ -274,6 +319,27 @@ export class ListingsPageComponent implements OnInit {
       }
     );
   }
+
+  // logic for infinite scroll
+  loadMoreListings(): void {
+    this.currentPage++;  // Increment to the next page
+    this.fetchListings();  // Fetch next page of listings
+  }
+  
+
+  @HostListener('window:scroll', [])
+  onScroll(): void {
+  if (!this.infiniteScrollEnabled) return;
+
+  const threshold = 300; // px from bottom to trigger
+  const position = window.innerHeight + window.scrollY;
+  const height = document.body.offsetHeight;
+
+  if (position > height - threshold) {
+    this.loadMoreListings();
+  }
+}
+
 
 }
 
